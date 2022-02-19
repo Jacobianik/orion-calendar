@@ -1,0 +1,34 @@
+image: node
+
+stages:
+  - prepare
+  - build
+  - deploy
+
+prepare:
+  stage: prepare
+  script:
+    - npm install
+  artifacts:
+    paths:
+      - node_modules/
+
+build:
+  stage: build
+  needs:
+    - job: prepare
+  script:
+    - npm run build
+  artifacts:
+    paths:
+      - public
+
+pages:
+  stage: deploy
+  needs:
+    - job: build
+  script:
+    - find public
+  artifacts:
+    paths:
+    - public
