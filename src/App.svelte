@@ -1,5 +1,4 @@
 <script lang="ts">
-import { validate_each_argument } from 'svelte/internal';
 
   const units = [
       {
@@ -16,6 +15,10 @@ import { validate_each_argument } from 'svelte/internal';
       },
       {
         name: "Nova",
+        sols: 23
+      },
+      {
+        name: "Celestia",
         sols: 23
       },
       {
@@ -41,8 +44,9 @@ import { validate_each_argument } from 'svelte/internal';
     ]
 	import Footer from './components/Footer.svelte'
 
-  const recalculateTime = () => {
-    const rawSeconds = ((new Date).getTime() / 1000) - 1599004800
+  const recalculateTime = (timestamp) => {
+    // const rawSeconds = ((new Date).getTime() / 1000) - 1599004800
+    const rawSeconds = timestamp - 1599004800
     const seconds = rawSeconds % 62
     const rawMinutes = rawSeconds / 62
     const minutes = rawMinutes % 65
@@ -50,28 +54,36 @@ import { validate_each_argument } from 'svelte/internal';
     const phases = rawPhases % 22
     const rawSols = rawPhases / 22
 
-    const solsInTrimester = rawSols % 223
+    const solsThisYear = rawSols % 670
+    const trimester = solsThisYear <= 223
+      ? "Alpha"
+      : solsThisYear <= 446
+        ? "Beta"
+        : "Gamma"
+
+    const solsInThisTrimester = trimester == "Gamma" ? 224 : 223
     
-    let unit = "unkown"
-    let solsIntoUnit = 0
-    let leftoverSolsInTrimester = solsInTrimester // tmp
-    for (let i = 0; i < units.length; i++) {
-      const { name, sols } = units[i]
-      
-      if (leftoverSolsInTrimester > sols) {
-        leftoverSolsInTrimester -= sols
-      } else {
-        unit = name
-        solsIntoUnit = leftoverSolsInTrimester
-        break;
-      }
+    let solsLeftInTrimester = solsInThisTrimester
+    const unit = units.find(({ name, sols }) => {
+      console.log({name, sols, solsLeftInTrimester})
+      if (solsLeftInTrimester >= sols)
+        solsLeftInTrimester -= sols
+      else
+        return true
+    })?.name || "Terminus"
+
+    let sol = solsInThisTrimester
+    for (const i in units) {
+      if (units[i].name == unit) break
+      sol -= units[i].sols
     }
 
-    const trimester = ["Alpha", "Beta", "Gamma"][Math.ceil((rawSols / 223) % 3) -1]
+    console.log({solsThisYear, solsInThisTrimester, sol})
+
     const year = Math.floor(rawSols / 670) + 1
 
     return {
-      sol: solsIntoUnit,
+      sol: sol,
       unit,
       trimester,
       year,
@@ -82,7 +94,7 @@ import { validate_each_argument } from 'svelte/internal';
     }
   }
 
-  let currentTime = recalculateTime()
+  let currentTime = recalculateTime(0)
 
   const getNeighbourInArray = (arr: any[], findFunction: any, direction: 1 | -1) => {
     const foundIndex = arr.findIndex(findFunction)
@@ -105,17 +117,17 @@ import { validate_each_argument } from 'svelte/internal';
       ).toFixed()).slice(-2)
   }
 
-  window.minMaxOverflow =  minMaxOverflow
+  window.recalculateTime = t => currentTime = recalculateTime(t)
 
-  setInterval(() => currentTime = recalculateTime(), 100)
+  // setInterval(() => currentTime = recalculateTime(), 100)
 </script>
 
 <main>
 
   <section>
-    <span>{(currentTime.phases - 1).toFixed()}</span>
-    <b>{currentTime.phases.toFixed()}</b>
-    <span>{(currentTime.phases + 1).toFixed()}</span>
+    <span>{minMaxOverflow(currentTime.phases - 1, 22)}</span>
+    <b>{minMaxOverflow(currentTime.phases, 22)}</b>
+    <span>{minMaxOverflow(currentTime.phases + 1, 22)}</span>
   </section>
   
   <span>:</span>
@@ -140,9 +152,9 @@ import { validate_each_argument } from 'svelte/internal';
   <span></span>
   <span></span>
   <span></span>
-  <span></span>
   
   <section>
+    <!-- TODO: Find which days actually exist  -->
     <span>{(currentTime.sol - 1).toFixed()}</span>
     <b>{(currentTime.sol).toFixed()}</b>
     <span>{(currentTime.sol + 1).toFixed()}</span>
